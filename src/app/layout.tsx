@@ -23,6 +23,9 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "./",
   },
+  verification: {
+    google: "D5XfLK3OOCGFon_cxfj51r-nDDsslFa_J-C_ruN2Vi0",
+  },
   openGraph: {
     title: "BimBeachTracker | Real-Time Barbados Coastal Guide",
     description:
