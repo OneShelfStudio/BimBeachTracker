@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import {
   ExternalLink,
   Navigation,
@@ -12,6 +13,7 @@ import { IslandTelemetryPayload } from "@/lib/openMeteo";
 import { formatCameraAge, plainStatusLabel, rankBestRightNow, statusToneClass } from "@/lib/scoring";
 import { getCamerasForBeach, getPrimaryCameraForBeach, setStaleCameraIds } from "@/lib/cameras";
 import { getFeaturedPartnersList, getPartnerForBeach } from "@/lib/sponsors";
+import OceanBackground from "./OceanBackground";
 import IslandMap from "./IslandMap";
 import FilterPills, { QuickFilterKey } from "./FilterPills";
 import ConditionsPanel from "./ConditionsPanel";
@@ -195,43 +197,8 @@ export default function BimBeachDashboard({ initialData }: BimBeachDashboardProp
 
   return (
     <div className="relative min-h-screen bg-[#030d18] text-slate-100 overflow-x-hidden">
-      {/* FLOWY CARIBBEAN OCEANIC AMBIENT BACKDROP (No Mountain Video) */}
-      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(ellipse 90% 55% at 50% -10%, rgba(6, 182, 212, 0.22), transparent 65%), radial-gradient(ellipse 75% 50% at 85% 25%, rgba(14, 116, 144, 0.18), transparent 65%), radial-gradient(ellipse 80% 60% at 15% 65%, rgba(3, 105, 161, 0.16), transparent 70%), linear-gradient(180deg, #041322 0%, #030d18 55%, #020810 100%)",
-          }}
-        />
-        {/* Gentle SVG Oceanic Current Lines */}
-        <svg
-          className="absolute inset-x-0 top-0 h-[560px] w-full opacity-25"
-          viewBox="0 0 1440 400"
-          preserveAspectRatio="none"
-        >
-          <path
-            fill="url(#oceanWaveGrad1)"
-            d="M0,128L80,144C160,160,320,192,480,181.3C640,171,800,117,960,112C1120,107,1280,149,1360,170.7L1440,192L1440,0L1360,0C1280,0,1120,0,960,0C800,0,640,0,480,0C320,0,160,0,80,0L0,0Z"
-          />
-          <path
-            fill="url(#oceanWaveGrad2)"
-            d="M0,256L80,240C160,224,320,192,480,197.3C640,203,800,245,960,250.7C1120,256,1280,224,1360,208L1440,192L1440,0L1360,0C1280,0,1120,0,960,0C800,0,640,0,480,0C320,0,160,0,80,0L0,0Z"
-          />
-          <defs>
-            <linearGradient id="oceanWaveGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.35" />
-              <stop offset="50%" stopColor="#0284c7" stopOpacity="0.18" />
-              <stop offset="100%" stopColor="#0f172a" stopOpacity="0" />
-            </linearGradient>
-            <linearGradient id="oceanWaveGrad2" x1="100%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.22" />
-              <stop offset="60%" stopColor="#0369a1" stopOpacity="0.1" />
-              <stop offset="100%" stopColor="#030d18" stopOpacity="0" />
-            </linearGradient>
-          </defs>
-        </svg>
-      </div>
+      {/* INTERACTIVE LIQUID CARIBBEAN OCEANIC CANVAS */}
+      <OceanBackground />
 
       {/* TOP BAR */}
       <header className="relative z-20 border-b border-white/10 bg-[#030d18]/85 backdrop-blur-md">
@@ -354,39 +321,91 @@ export default function BimBeachDashboard({ initialData }: BimBeachDashboardProp
             counts={filterCounts}
           />
 
-          {/* Best Right Now: top 3 beaches, one tap to jump */}
+          {/* Where to Go Right Now in Barbados (Live Top 3 Decision Deck) */}
           {bestRightNow.length > 0 && (
-            <div className="border border-amber-300/30 bg-[#071628]/90 p-4">
-              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-amber-300">
-                Best right now
-              </p>
-              <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div className="rounded-sm border border-amber-300/35 bg-[#061424]/90 backdrop-blur-md p-4 sm:p-5 shadow-xl space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-amber-300">
+                  Where to Go Right Now in Barbados (Live Top 3)
+                </p>
+                <span className="text-[11px] text-slate-300">
+                  Updated every 5 min · Calmest water &amp; lowest seaweed
+                </span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {bestRightNow.map((item, idx) => {
                   const plain = plainStatusLabel(item);
                   const isSel = item.beach.slug === selectedBundle.beach.slug;
+                  const weedText =
+                    item.effectiveSargassumScore <= 15
+                      ? "Clear of seaweed"
+                      : item.effectiveSargassumScore <= 35
+                      ? "Light seaweed"
+                      : "Seaweed alert";
                   return (
-                    <button
+                    <div
                       key={item.beach.slug}
-                      type="button"
-                      onClick={() => handleSelectBeachAndScroll(item.beach.slug, "none")}
-                      className={`flex items-center gap-3 border px-3.5 py-3 text-left transition ${
+                      className={`flex flex-col justify-between gap-3 rounded-sm border p-3.5 transition ${
                         isSel
                           ? "border-amber-300 bg-amber-300/10"
-                          : "border-white/15 bg-white/5 hover:border-amber-300/60"
+                          : "border-white/15 bg-white/[0.04] hover:border-amber-300/60"
                       }`}
                     >
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center bg-amber-300 text-sm font-extrabold text-slate-950">
-                        {idx + 1}
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block truncate text-sm font-bold text-white">
-                          {item.beach.name.replace(/\s*\([^)]*\)/g, "")}
-                        </span>
-                        <span className={`block text-xs font-medium ${statusToneClass(plain.tone)}`}>
-                          {plain.text} · {item.inshoreWaveM.toFixed(2)}m waves
-                        </span>
-                      </span>
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSelectBeachAndScroll(item.beach.slug, "none")}
+                        className="text-left space-y-2 w-full"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="inline-flex items-center gap-1.5 bg-amber-300 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-950">
+                            <span>#{idx + 1} Best Right Now</span>
+                          </span>
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-300">
+                            {item.beach.coast} · {item.beach.parish}
+                          </span>
+                        </div>
+
+                        <div>
+                          <span className="block truncate font-serif text-lg font-bold text-white">
+                            {item.beach.name.replace(/\s*\([^)]*\)/g, "")}
+                          </span>
+                          <span className={`block text-xs font-semibold mt-0.5 ${statusToneClass(plain.tone)}`}>
+                            {plain.text} · {item.inshoreWaveM.toFixed(2)}m waves
+                          </span>
+                          <span className="block text-[11px] text-emerald-300/90 mt-0.5">
+                            {weedText}
+                            {item.beach.hasLiveCam ? " · Live Camera Streaming" : ""}
+                          </span>
+                        </div>
+                      </button>
+
+                      <div className="flex items-center gap-2 pt-1 border-t border-white/10">
+                        {item.beach.hasLiveCam ? (
+                          <button
+                            type="button"
+                            onClick={() => setCamModalSlug(item.beach.slug)}
+                            className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-sm bg-amber-300 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-950 hover:bg-amber-200 transition"
+                          >
+                            <Video className="h-3 w-3" />
+                            <span>Watch Cam</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleSelectBeachAndScroll(item.beach.slug, "map")}
+                            className="flex-1 rounded-sm bg-white/10 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-white/20 transition"
+                          >
+                            Select on Map
+                          </button>
+                        )}
+                        <Link
+                          href={`/beach/${item.beach.slug}`}
+                          className="rounded-sm border border-white/20 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-200 hover:border-amber-300 hover:text-amber-300 transition"
+                        >
+                          Full Guide →
+                        </Link>
+                      </div>
+                    </div>
                   );
                 })}
               </div>
@@ -447,8 +466,8 @@ export default function BimBeachDashboard({ initialData }: BimBeachDashboardProp
                 dominantWindLabel={data.islandSummary.dominantWindLabel}
               />
 
-              {/* Mobile Quick-Jump Bar Under Map so Phone Users See Selected Beach Immediately */}
-              <div className="lg:hidden flex items-center justify-between gap-3 rounded-sm border border-amber-300/40 bg-[#071628] px-4 py-3 shadow-lg">
+              {/* Mobile & Quick Full-Page Bar Under Map so Users Can Jump to Tides or Full Beach Guide */}
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-amber-300/40 bg-[#071628]/95 backdrop-blur-md px-4 py-3 shadow-lg">
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-widest text-amber-300 block">
                     Selected on Map · {selectedBundle.beach.coast} Coast
@@ -457,13 +476,21 @@ export default function BimBeachDashboard({ initialData }: BimBeachDashboardProp
                     {selectedBundle.beach.name}
                   </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleSelectBeachAndScroll(selectedBundle.beach.slug, "panel")}
-                  className="shrink-0 rounded-sm bg-amber-300 px-3.5 py-2 text-[11px] font-bold uppercase tracking-wider text-slate-950"
-                >
-                  View Tides &amp; Cam ↓
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectBeachAndScroll(selectedBundle.beach.slug, "panel")}
+                    className="lg:hidden rounded-sm bg-amber-300 px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-slate-950"
+                  >
+                    Tides &amp; Cam ↓
+                  </button>
+                  <Link
+                    href={`/beach/${selectedBundle.beach.slug}`}
+                    className="rounded-sm border border-cyan-300/40 bg-cyan-500/10 px-3.5 py-2 text-[11px] font-bold uppercase tracking-wider text-cyan-200 transition hover:bg-cyan-400 hover:text-slate-950"
+                  >
+                    Full Beach Page →
+                  </Link>
+                </div>
               </div>
             </div>
 
@@ -725,8 +752,14 @@ export default function BimBeachDashboard({ initialData }: BimBeachDashboardProp
                           onClick={() => handleSelectBeachAndScroll(item.beach.slug, "map")}
                           className="flex-1 rounded-sm bg-amber-300 py-2 px-3 text-[11px] font-bold uppercase tracking-widest text-slate-950 transition hover:bg-amber-200 text-center"
                         >
-                          Inspect on Map &amp; Tides
+                          Inspect on Map
                         </button>
+                        <Link
+                          href={`/beach/${item.beach.slug}`}
+                          className="rounded-sm border border-cyan-300/35 bg-cyan-950/50 py-2 px-3 text-[11px] font-bold uppercase tracking-wider text-cyan-200 transition hover:bg-cyan-400 hover:text-slate-950"
+                        >
+                          Guide →
+                        </Link>
                         <a
                           href={`https://www.google.com/maps/dir/?api=1&destination=${item.beach.lat},${item.beach.lon}`}
                           target="_blank"
@@ -821,8 +854,8 @@ export default function BimBeachDashboard({ initialData }: BimBeachDashboardProp
             label="Sponsored"
           />
 
-          {/* COMMUNITY & SPONSOR FOOTER (yuhgettintru.com-inspired public utility model) */}
-          <footer className="rounded-sm border border-white/15 bg-[#061220] p-6 sm:p-8 space-y-6">
+          {/* COMMUNITY & SPONSOR FOOTER */}
+          <footer className="rounded-sm border border-white/15 bg-[#061220]/90 backdrop-blur-md p-6 sm:p-8 space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               <div className="lg:col-span-7 space-y-3">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-300">
@@ -885,6 +918,24 @@ export default function BimBeachDashboard({ initialData }: BimBeachDashboardProp
                     , supporting island cleanups across Barbados.
                   </p>
                 </div>
+              </div>
+            </div>
+
+            {/* SEO & Quick Beach Directory Index (All 46 Beaches Crawlable from Home) */}
+            <div className="border-t border-white/10 pt-5 space-y-2.5">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                All {data.beaches.length} Barbados Beach Guides &amp; Live Reports
+              </p>
+              <div className="flex flex-wrap gap-x-3 gap-y-1.5 text-[11px] text-slate-300">
+                {data.beaches.map((item) => (
+                  <Link
+                    key={item.beach.slug}
+                    href={`/beach/${item.beach.slug}`}
+                    className="hover:text-amber-300 underline decoration-white/15 underline-offset-4 transition"
+                  >
+                    {item.beach.name}
+                  </Link>
+                ))}
               </div>
             </div>
           </footer>

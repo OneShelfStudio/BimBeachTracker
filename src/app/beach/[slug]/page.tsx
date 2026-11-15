@@ -15,6 +15,7 @@ import { getIslandConditionsPayload } from "@/lib/openMeteo";
 import { getPartnerForBeach } from "@/lib/sponsors";
 import { analyzeWindSurfaceEffect, predictInshoreWave } from "@/lib/scoring";
 import AdUnit from "@/components/AdUnit";
+import OceanBackground from "@/components/OceanBackground";
 
 export const revalidate = 300;
 
@@ -94,9 +95,66 @@ export default async function BeachStationDetailPage({
     telemetry.marine.windSpeedKmh
   );
 
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": ["Beach", "TouristAttraction"],
+        name: `${beach.name}, Barbados`,
+        description: beach.description,
+        url: `https://www.bimbeachtracker.com/beach/${beach.slug}`,
+        isAccessibleForFree: true,
+        geo: {
+          "@type": "GeoCoordinates",
+          latitude: beach.lat,
+          longitude: beach.lon,
+        },
+        containedInPlace: {
+          "@type": "AdministrativeArea",
+          name: `${beach.parish}, Barbados`,
+        },
+      },
+      {
+        "@type": "FAQPage",
+        mainEntity: [
+          {
+            "@type": "Question",
+            name: `Is ${beach.name} in Barbados calm for swimming today?`,
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: `${friendlyWater} right now at ${beach.name} (${beach.parish}, ${beach.coast} Coast), with predicted inshore wave height around ${telemetry.inshoreWaveM.toFixed(2)}m. Wind surface status: ${windAnalysis.label}. ${windAnalysis.explanation}`,
+            },
+          },
+          {
+            "@type": "Question",
+            name: `Does ${beach.name} have sargassum seaweed today?`,
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: `Current telemetry for ${beach.name}: ${friendlySeaweed}. Live island updates run continuously at BimBeachTracker.com.${cameras.length > 0 ? ` There are also ${cameras.length} live camera feed(s) available to inspect ${beach.name} directly.` : ""}`,
+            },
+          },
+          {
+            "@type": "Question",
+            name: `What are today's high and low tide times at ${beach.name}?`,
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: `Next tide event: ${payload.tideSchedule.nextTideSummary}. Today's Barbados tide schedule (${payload.tideSchedule.dateLabel}): ${payload.tideSchedule.events.map((ev) => `${ev.state} Tide at ${ev.time} (${ev.heightM})`).join(", ")}.`,
+            },
+          },
+        ],
+      },
+    ],
+  };
+
   return (
-    <div className="relative z-10 min-h-screen bg-[#040a12] px-5 py-10 sm:px-6 text-slate-100">
-      <div className="mx-auto max-w-5xl space-y-8">
+    <div className="relative min-h-screen bg-[#030d18] text-slate-100 overflow-x-hidden">
+      <OceanBackground />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
+      <div className="relative z-10 px-5 py-10 sm:px-6">
+        <div className="mx-auto max-w-5xl space-y-8">
         {/* Back Link */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/15 pb-4">
           <Link
@@ -461,6 +519,7 @@ export default async function BeachStationDetailPage({
               <ExternalLink className="h-3.5 w-3.5" />
             </a>
           </div>
+        </div>
         </div>
       </div>
     </div>

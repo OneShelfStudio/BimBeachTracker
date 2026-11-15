@@ -71,8 +71,36 @@ export default function SponsorInquiryModal({
 
         <div className="mt-5 space-y-4 text-xs text-slate-200">
           <p className="leading-relaxed text-slate-300 text-sm">
-            Run a beach bar, fish cutter van, chair rental, or snorkel boat in Barbados? We feature one local spot on each beach guide so visitors know where to eat, drink, and rent loungers once they check the water.
+            Run a beach bar, fish cutter van, chair rental, or snorkel boat in Barbados? We feature local spots on each beach guide so visitors know where to eat, drink, and rent loungers once they check the water.
           </p>
+
+          {/* Flexible Local Sponsorship Tiers (No Fixed Price Anchoring) */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-0.5">
+            <div className="rounded-sm border border-white/10 bg-[#040e1a] p-2.5 space-y-1">
+              <span className="block text-[10px] font-bold uppercase tracking-wider text-emerald-300">
+                Local Sand Spot
+              </span>
+              <p className="text-[11px] text-slate-300 leading-snug">
+                Chair &amp; umbrella rentals, fish cutter stands, and coconut vans.
+              </p>
+            </div>
+            <div className="rounded-sm border border-white/10 bg-[#040e1a] p-2.5 space-y-1">
+              <span className="block text-[10px] font-bold uppercase tracking-wider text-amber-300">
+                Beach Bar / Cafe
+              </span>
+              <p className="text-[11px] text-slate-300 leading-snug">
+                Beachfront restaurants, rum bars, and neighborhood surf schools.
+              </p>
+            </div>
+            <div className="rounded-sm border border-white/10 bg-[#040e1a] p-2.5 space-y-1">
+              <span className="block text-[10px] font-bold uppercase tracking-wider text-cyan-300">
+                Charter &amp; Brand
+              </span>
+              <p className="text-[11px] text-slate-300 leading-snug">
+                Catamaran cruises, dive operators, and island-wide sponsors.
+              </p>
+            </div>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
             <div>
