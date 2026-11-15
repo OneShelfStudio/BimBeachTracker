@@ -18,7 +18,7 @@ export interface CameraFeedConfig {
  * All stale/offline feeds (>2h old) have been pruned so beachgoers only see live, current views.
  */
 export const BARBADOS_CAMERAS: Record<string, CameraFeedConfig> = {
-  // Miami Beach / Enterprise / Oistins Bay (4 Verified Live Angles)
+  // Miami Beach / Enterprise / Oistins Bay
   ncc_miami_1: {
     id: "ncc_miami_1",
     name: "Miami Beach · West Swimming Cove",
@@ -28,6 +28,15 @@ export const BARBADOS_CAMERAS: Record<string, CameraFeedConfig> = {
     refreshIntervalSec: 60,
     viewAngleLabel: "Sheltered Casuarina Cove",
   },
+  ncc_miami_2: {
+    id: "ncc_miami_2",
+    name: "Miami Beach · West Breakwater & Sand",
+    beachSlug: "miami-beach",
+    snapshotUrl: "https://snapshots.iwcpinc.com:444/snapshots/NCC_Miami_2.jpg",
+    provider: "IWCP Barbados",
+    refreshIntervalSec: 60,
+    viewAngleLabel: "West Breakwater & Sand",
+  },
   ncc_enterprise_1: {
     id: "ncc_enterprise_1",
     name: "Miami Beach · Enterprise Main Sandbar",
@@ -36,6 +45,15 @@ export const BARBADOS_CAMERAS: Record<string, CameraFeedConfig> = {
     provider: "IWCP Barbados",
     refreshIntervalSec: 60,
     viewAngleLabel: "South-East Atlantic Side",
+  },
+  ncc_enterprise_2: {
+    id: "ncc_enterprise_2",
+    name: "Miami Beach · Enterprise Lifeguard & Reef",
+    beachSlug: "miami-beach",
+    snapshotUrl: "https://snapshots.iwcpinc.com:444/snapshots/NCC_Enterprise_2.jpg",
+    provider: "IWCP Barbados",
+    refreshIntervalSec: 60,
+    viewAngleLabel: "Enterprise Lifeguard & Reef",
   },
   // Oistins Bay (2 Verified Live Angles)
   oistins_1: {
@@ -416,27 +434,29 @@ export const BARBADOS_CAMERAS: Record<string, CameraFeedConfig> = {
     viewAngleLabel: "Quiet Tree-Lined Sand",
   },
 
-  // Heywoods & Six Mens Bay (2 Verified Live Angles)
-  pendry_cam_2: {
-    id: "pendry_cam_2",
-    name: "Heywoods Beach · Beachfront",
-    beachSlug: "heywoods-beach",
-    snapshotUrl: "https://snapshots.iwcpinc.com:444/snapshots/Pendry_Cam_2.jpg",
-    provider: "IWCP Barbados",
-    refreshIntervalSec: 60,
-    viewAngleLabel: "North-West Calm Coast",
-  },
-  pendry_port_ferdinand: {
-    id: "pendry_port_ferdinand",
-    name: "Six Mens Bay & Port Ferdinand North PTZ",
+  // Six Mens Bay & Little Good Harbour (1 Verified Live Angle)
+  fish_pot: {
+    id: "fish_pot",
+    name: "Six Mens & Little Good Harbour · The Fish Pot",
     beachSlug: "six-mens-bay",
-    snapshotUrl: "https://snapshots.iwcpinc.com:444/snapshots/Pendry_Port_Ferdinand_PTZ.jpg",
+    snapshotUrl: "https://snapshots.iwcpinc.com:444/snapshots/The_Fish_Pot.jpg",
+    hlsStreamUrl: "https://stream.iwcpinc.com/IWCP_BEACH/_definst_/The_Fish_Pot.stream/playlist.m3u8",
     provider: "IWCP Barbados",
     refreshIntervalSec: 60,
-    viewAngleLabel: "Marina & Six Mens Reef",
+    viewAngleLabel: "Little Good Harbour & Six Mens Reef",
   },
 
-  // Bathsheba / Soup Bowl (1 Verified Live Angle)
+  // Bathsheba / Soup Bowl (Primary + Backup Angles)
+  soup_bowl_2: {
+    id: "soup_bowl_2",
+    name: "Bathsheba · Soup Bowl Surf Break (Angle 2)",
+    beachSlug: "bathsheba",
+    snapshotUrl: "https://snapshots.iwcpinc.com:444/snapshots/Soup_Bowl_2.jpg",
+    hlsStreamUrl: "https://stream.iwcpinc.com/IWCP_SURF/_definst_/Soup_Bowl_2.stream/playlist.m3u8",
+    provider: "IWCP Barbados",
+    refreshIntervalSec: 60,
+    viewAngleLabel: "Main Soup Bowl Lineup",
+  },
   soup_bowl_1: {
     id: "soup_bowl_1",
     name: "Bathsheba · Soup Bowl Surf Break (Live)",

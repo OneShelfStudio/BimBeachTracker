@@ -70,8 +70,13 @@ export default async function BeachStationDetailPage({
   const payload = await getIslandConditionsPayload();
   const telemetry =
     payload.beaches.find((b) => b.beach.slug === slug) || payload.beaches[0];
+  const coastHourly =
+    payload.hourlyForecastByCoast?.[beach.coast] || payload.hourlyForecast;
   const cameras = getCamerasForBeach(slug);
   const nearestCam = cameras.length === 0 ? getNearestCameraNeighbor(slug) : null;
+  const camCacheBust = payload.generatedAtIso
+    ? Math.floor(Date.parse(payload.generatedAtIso) / 30000)
+    : Math.floor(Date.now() / 60000);
   const pivot = telemetry.pivotRecommendation;
   const partner = getPartnerForBeach(beach.slug, beach.name);
 
@@ -276,7 +281,7 @@ export default async function BeachStationDetailPage({
           </div>
 
           {/* 24-HOUR SWELL & TIDE FORECAST TIMELINE */}
-          {payload.hourlyForecast && payload.hourlyForecast.length > 0 && (
+          {coastHourly && coastHourly.length > 0 && (
             <div className="rounded-sm border border-white/10 bg-[#040e1b] p-4 space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
@@ -291,7 +296,7 @@ export default async function BeachStationDetailPage({
               </div>
 
               <div className="flex gap-2 overflow-x-auto pb-2 pt-1 scrollbar-thin scrollbar-thumb-white/20">
-                {payload.hourlyForecast.slice(0, 16).map((pt, idx) => {
+                {coastHourly.slice(0, 16).map((pt, idx) => {
                   const predM = predictInshoreWave(beach, pt);
                   const tone =
                     predM <= 0.3
@@ -420,7 +425,7 @@ export default async function BeachStationDetailPage({
                   <div className="aspect-video w-full bg-black">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={cam.snapshotUrl}
+                      src={`${cam.snapshotUrl}?t=${camCacheBust}`}
                       alt={cam.name}
                       className="h-full w-full object-cover"
                     />
@@ -464,7 +469,7 @@ export default async function BeachStationDetailPage({
               <div className="aspect-video w-full bg-black">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={nearestCam.primaryCamera.snapshotUrl}
+                  src={`${nearestCam.primaryCamera.snapshotUrl}?t=${camCacheBust}`}
                   alt={nearestCam.primaryCamera.name}
                   className="h-full w-full object-cover"
                 />

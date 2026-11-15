@@ -58,7 +58,7 @@ export default function AdUnit({
                 rel="noopener noreferrer"
                 className="shrink-0 px-4 py-2 rounded-sm bg-amber-300 hover:bg-amber-200 text-slate-950 font-bold text-xs uppercase tracking-wider transition shadow-md"
               >
-                Spotlights from $200/mo →
+                Sponsor a Beach Page →
               </a>
             </>
           ) : variant === 'game' ? (
@@ -122,7 +122,7 @@ export default function AdUnit({
                   🚀 Need a Custom Website, Booking System, or 5-Second Phone Controls?
                 </p>
                 <p className="text-xs text-slate-300">
-                  100% code ownership, tailored project quotes, and optional hands-on monthly care—built between the US &amp; Barbados.
+                  100% code ownership, tailored project quotes, and optional hands-on monthly care, built between the US &amp; Barbados.
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2 shrink-0">

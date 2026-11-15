@@ -64,10 +64,13 @@ export default function BimBeachDashboard({ initialData }: BimBeachDashboardProp
     }
   };
 
-  const handleRefreshTelemetry = async () => {
+  const handleRefreshTelemetry = async (forceFresh = false) => {
     setIsRefreshing(true);
     try {
-      const res = await fetch("/api/conditions", { cache: "no-store" });
+      const url = forceFresh
+        ? `/api/conditions?fresh=1&t=${Date.now()}`
+        : "/api/conditions";
+      const res = await fetch(url, { cache: "no-store" });
       if (res.ok) {
         const json: IslandTelemetryPayload = await res.json();
         setData(json);
@@ -87,9 +90,9 @@ export default function BimBeachDashboard({ initialData }: BimBeachDashboardProp
         setSelectedSlug(beachParam);
       }
     }
-    handleRefreshTelemetry();
+    handleRefreshTelemetry(false);
     const interval = setInterval(() => {
-      handleRefreshTelemetry();
+      handleRefreshTelemetry(false);
     }, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
@@ -181,7 +184,9 @@ export default function BimBeachDashboard({ initialData }: BimBeachDashboardProp
   }, [data.beaches]);
 
   const featuredPartners = useMemo(() => getFeaturedPartnersList(), []);
-  const cacheBust = Math.floor(Date.now() / 60000);
+  const cacheBust = data.generatedAtIso
+    ? Math.floor(Date.parse(data.generatedAtIso) / 30000)
+    : Math.floor(Date.now() / 60000);
 
   // Top 3 beaches right now (green only, best swim score, least seaweed)
   const bestRightNow = useMemo(() => rankBestRightNow(data.beaches, 3), [data.beaches]);
@@ -224,9 +229,12 @@ export default function BimBeachDashboard({ initialData }: BimBeachDashboardProp
               {data.tideSchedule.nextTideSummary}
             </span>
             <span className="text-white/20 hidden sm:inline">|</span>
+            <span className="text-[11px] text-cyan-300/90 hidden md:inline tabular-nums">
+              Updated {data.astDisplayTime}
+            </span>
             <button
               type="button"
-              onClick={handleRefreshTelemetry}
+              onClick={() => handleRefreshTelemetry(true)}
               disabled={isRefreshing}
               className="inline-flex items-center gap-1.5 text-slate-200 hover:text-amber-300 transition uppercase tracking-wider font-semibold"
             >
@@ -498,11 +506,14 @@ export default function BimBeachDashboard({ initialData }: BimBeachDashboardProp
               <ConditionsPanel
                 bundle={selectedBundle}
                 tideSchedule={data.tideSchedule}
-                hourlyForecast={data.hourlyForecast}
+                hourlyForecast={
+                  data.hourlyForecastByCoast?.[selectedBundle.beach.coast] ||
+                  data.hourlyForecast
+                }
                 onSelectBeachSlug={(slug) => handleSelectBeachAndScroll(slug, "none")}
                 onOpenLiveCam={(slug) => setCamModalSlug(slug)}
                 onOpenSponsorModal={(slug) => setSponsorModalSlug(slug)}
-                onReportSubmitted={handleRefreshTelemetry}
+                onReportSubmitted={() => handleRefreshTelemetry(true)}
               />
             </div>
           </div>

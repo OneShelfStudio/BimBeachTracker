@@ -584,6 +584,40 @@ export default function ConditionsPanel({
                       {Math.round(((marine.waterTempC ?? 28.4) * 9) / 5 + 32)}°F)
                     </span>
                   </div>
+                  {(marine.airTempC !== undefined ||
+                    marine.windGustsKmh !== undefined ||
+                    marine.uvIndex !== undefined) && (
+                    <>
+                      <div>
+                        <span className="text-[10px] uppercase tracking-wider text-slate-400 block">
+                          Air Temp &amp; UV Index
+                        </span>
+                        <span className="text-sm font-bold text-white">
+                          {marine.airTempC !== undefined
+                            ? `${marine.airTempC.toFixed(1)}°C (${Math.round(
+                                (marine.airTempC * 9) / 5 + 32
+                              )}°F)`
+                            : "Warm Coastal"}
+                          {marine.uvIndex !== undefined
+                            ? ` · UV ${marine.uvIndex.toFixed(1)}`
+                            : ""}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase tracking-wider text-slate-400 block">
+                          Wind Gusts &amp; Surface Flow
+                        </span>
+                        <span className="text-sm font-bold text-white">
+                          {marine.windGustsKmh !== undefined
+                            ? `Gusts ${Math.round(marine.windGustsKmh)} km/h`
+                            : "Steady Trades"}
+                          {marine.oceanCurrentKmh !== undefined
+                            ? ` · Current ${marine.oceanCurrentKmh.toFixed(1)} km/h`
+                            : ""}
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {beach.bestFor && beach.bestFor.length > 0 && (

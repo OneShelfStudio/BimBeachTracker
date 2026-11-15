@@ -1,5 +1,5 @@
-import { BARBADOS_BEACHES, BeachDefinition } from "./beaches";
-import { BARBADOS_CAMERAS, setStaleCameraIds } from "./cameras";
+import { BARBADOS_BEACHES, BeachDefinition, CoastSector } from "./beaches";
+import { BARBADOS_CAMERAS, getCamerasForBeach, setStaleCameraIds } from "./cameras";
 import { findBestPivotBeach, SafePivotRecommendation } from "./pivot";
 import {
   AIVisionGrade,
@@ -50,6 +50,8 @@ export interface IslandConditionsPayload {
   cameraAgeMinutes: Record<string, number | null>;
   /** 24-hour hourly offshore marine and wind envelope for Barbados */
   hourlyForecast: HourlyForecastPoint[];
+  /** Coast-specific 24-hour hourly offshore marine and wind envelopes */
+  hourlyForecastByCoast?: Record<CoastSector, HourlyForecastPoint[]>;
   islandSummary: {
     totalBeaches: number;
     greenCount: number;
@@ -85,10 +87,26 @@ function parseTimeToMinutes(timeStr: string): number {
   return hour * 60 + min;
 }
 
+function extractTideEventsFromHtml(htmlFragment: string): TideEventEntry[] {
+  const rowRegex =
+    /<td class="tidal-state">\s*(High|Low)\s*<\/td>\s*<td class="tidal-time">\s*([^<]+?)\s*<\/td>\s*<td class="tidal-height[^"]*">\s*<span class="m">([^<]+)<\/span>\s*<span class="ft">([^<]+)<\/span>/gi;
+  const events: TideEventEntry[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = rowRegex.exec(htmlFragment)) !== null) {
+    events.push({
+      state: match[1] === "Low" ? "Low" : "High",
+      time: match[2].trim(),
+      heightM: match[3].trim(),
+      heightFt: match[4].trim(),
+    });
+  }
+  return events;
+}
+
 /**
- * Fetches today's real High and Low Tide schedule for Barbados directly from TideTime.org
+ * Fetches today's (and tomorrow's overflow) High and Low Tide schedule for Barbados directly from TideTime.org
  */
-async function fetchBarbadosTideSchedule(): Promise<BarbadosTideSchedule> {
+async function fetchBarbadosTideSchedule(forceFresh = false): Promise<BarbadosTideSchedule> {
   const sourceUrl = "https://www.tidetime.org/central-america/barbados/bathsheba.htm";
 
   // Get current Barbados (AST) time in minutes since midnight
@@ -96,28 +114,36 @@ async function fetchBarbadosTideSchedule(): Promise<BarbadosTideSchedule> {
     timeZone: "America/Barbados",
     hour: "numeric",
     minute: "numeric",
-    hour12: false,
+    hourCycle: "h23",
   }).formatToParts(new Date());
   const currHour = parseInt(nowAstParts.find((p) => p.type === "hour")?.value || "10", 10);
   const currMin = parseInt(nowAstParts.find((p) => p.type === "minute")?.value || "0", 10);
   const currTotalMinutes = (currHour % 24) * 60 + currMin;
 
-  const computeNextSummary = (events: TideEventEntry[]) => {
-    for (const ev of events) {
+  const computeNextSummary = (todayEvents: TideEventEntry[], tomorrowEvents: TideEventEntry[] = []) => {
+    for (const ev of todayEvents) {
       const evMins = parseTimeToMinutes(ev.time);
       if (evMins >= currTotalMinutes) {
         return `Next ${ev.state} Tide at ${ev.time} (${ev.heightM} / ${ev.heightFt})`;
       }
     }
-    const first = events[0];
+    const tmrwFirst = tomorrowEvents[0];
+    if (tmrwFirst) {
+      return `Next ${tmrwFirst.state} Tide tomorrow at ${tmrwFirst.time} (${tmrwFirst.heightM} / ${tmrwFirst.heightFt})`;
+    }
+    const first = todayEvents[0];
     return first
       ? `Next ${first.state} Tide at ${first.time} (${first.heightM} / ${first.heightFt})`
       : "Tide table updated daily";
   };
 
   try {
+    const fetchOpts: RequestInit & { next?: { revalidate: number } } = forceFresh
+      ? { cache: "no-store" }
+      : { next: { revalidate: 300 } };
+
     const res = await fetch(sourceUrl, {
-      cache: "no-store",
+      ...fetchOpts,
       headers: {
         "User-Agent": "Mozilla/5.0 (compatible; BimBeachTracker/1.0)",
       },
@@ -125,38 +151,39 @@ async function fetchBarbadosTideSchedule(): Promise<BarbadosTideSchedule> {
     if (!res.ok) throw new Error(`TideTime HTTP ${res.status}`);
     const html = await res.text();
 
-    // Extract the first <div class="tide-today-wrapper"> block (Today's table)
-    const todayBlockMatch = html.match(
-      /<div class="tide-today-wrapper">([\s\S]*?)<\/table>\s*<\/div>/
-    );
-    const todayHtml = todayBlockMatch ? todayBlockMatch[1] : html;
+    const blocks: string[] = [];
+    const blockRegex = /<div class="tide-today-wrapper">([\s\S]*?)<\/table>/gi;
+    let blockMatch: RegExpExecArray | null;
+    while ((blockMatch = blockRegex.exec(html)) !== null) {
+      blocks.push(blockMatch[1]);
+    }
+    const todayHtml = blocks[0] || html;
+    const tomorrowHtml = blocks[1] || "";
 
     const dateMatch = todayHtml.match(/<h3>([^<]+)<\/h3>/);
     const dateLabel = dateMatch ? dateMatch[1].trim() : "Today";
 
-    const rowRegex =
-      /<td class="tidal-state">\s*(High|Low)\s*<\/td>\s*<td class="tidal-time">\s*([^<]+?)\s*<\/td>\s*<td class="tidal-height[^"]*">\s*<span class="m">([^<]+)<\/span>\s*<span class="ft">([^<]+)<\/span>/gi;
+    const todayEvents = extractTideEventsFromHtml(todayHtml);
+    const tomorrowEvents = tomorrowHtml ? extractTideEventsFromHtml(tomorrowHtml) : [];
 
-    const events: TideEventEntry[] = [];
-    let match: RegExpExecArray | null;
-    while ((match = rowRegex.exec(todayHtml)) !== null) {
-      const state = match[1] === "Low" ? "Low" : "High";
-      events.push({
-        state,
-        time: match[2].trim(),
-        heightM: match[3].trim(),
-        heightFt: match[4].trim(),
+    // Pad mixed-diurnal days (<4 events today) with tomorrow's first tide(s) so all 4 tide slots stay informative
+    const displayEvents: TideEventEntry[] = [...todayEvents];
+    for (const ev of tomorrowEvents) {
+      if (displayEvents.length >= 4) break;
+      displayEvents.push({
+        ...ev,
+        time: `${ev.time} (Tmrw)`,
       });
     }
 
     const sunriseMatch = html.match(/Sunrise:\s*([0-9:apm\s]+)<\/p>/i);
     const sunsetMatch = html.match(/Sunset:\s*([0-9:apm\s]+)<\/p>/i);
 
-    if (events.length >= 2) {
+    if (todayEvents.length >= 1) {
       return {
         dateLabel,
-        events,
-        nextTideSummary: computeNextSummary(events),
+        events: displayEvents,
+        nextTideSummary: computeNextSummary(todayEvents, tomorrowEvents),
         sunrise: sunriseMatch ? sunriseMatch[1].trim() : "5:49am",
         sunset: sunsetMatch ? sunsetMatch[1].trim() : "5:36pm",
         sourceUrl,
@@ -176,7 +203,7 @@ async function fetchBarbadosTideSchedule(): Promise<BarbadosTideSchedule> {
   return {
     dateLabel: "Today",
     events: fallbackEvents,
-    nextTideSummary: computeNextSummary(fallbackEvents),
+    nextTideSummary: computeNextSummary(fallbackEvents, []),
     sunrise: "5:49am",
     sunset: "5:36pm",
     sourceUrl,
@@ -184,23 +211,27 @@ async function fetchBarbadosTideSchedule(): Promise<BarbadosTideSchedule> {
 }
 
 /**
- * Fetches live wave height, swell direction, swell period, and wind speed/direction
- * from Open-Meteo Marine & Forecast APIs for all 20 Barbados beaches.
+ * Fetches live wave height, wind wave height, swell, ocean current, SST, air temp, wind & UV
+ * from Open-Meteo Marine & Forecast APIs for all 46 Barbados beaches.
  */
 async function fetchRawMarineForBeaches(
-  beaches: BeachDefinition[]
+  beaches: BeachDefinition[],
+  forceFresh = false
 ): Promise<{ map: Record<string, RawMarineTelemetry>; isLive: boolean }> {
   const lats = beaches.map((b) => b.lat.toFixed(4)).join(",");
   const lons = beaches.map((b) => b.lon.toFixed(4)).join(",");
   const nowIso = new Date().toISOString();
+  const fetchOpts: RequestInit & { next?: { revalidate: number } } = forceFresh
+    ? { cache: "no-store" }
+    : { next: { revalidate: 120 } };
 
   try {
-    const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${lats}&longitude=${lons}&current=wave_height,swell_wave_height,swell_wave_direction,swell_wave_period,sea_surface_temperature&timezone=America%2FBarbados`;
-    const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=wind_speed_10m,wind_direction_10m&timezone=America%2FBarbados`;
+    const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${lats}&longitude=${lons}&current=wave_height,wind_wave_height,swell_wave_height,swell_wave_direction,swell_wave_period,ocean_current_velocity,sea_surface_temperature&cell_selection=sea&timezone=America%2FBarbados`;
+    const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=temperature_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index&timezone=America%2FBarbados`;
 
     const [marineRes, weatherRes] = await Promise.all([
-      fetch(marineUrl, { cache: "no-store" }),
-      fetch(weatherUrl, { cache: "no-store" }),
+      fetch(marineUrl, fetchOpts),
+      fetch(weatherUrl, fetchOpts),
     ]);
 
     if (!marineRes.ok || !weatherRes.ok) {
@@ -218,16 +249,44 @@ async function fetchRawMarineForBeaches(
     beaches.forEach((beach, idx) => {
       const mCurr = marineList[idx]?.current || marineList[0]?.current || {};
       const wCurr = weatherList[idx]?.current || weatherList[0]?.current || {};
+      const rawTime = typeof mCurr.time === "string" ? mCurr.time : null;
+      const isoTime = rawTime
+        ? new Date(
+            rawTime.includes("Z") || /[+-]\d{2}:\d{2}$/.test(rawTime)
+              ? rawTime
+              : `${rawTime}-04:00`
+          ).toISOString()
+        : nowIso;
 
       result[beach.slug] = {
         waveHeightM: Number(mCurr.wave_height ?? 1.35),
+        windWaveHeightM:
+          mCurr.wind_wave_height !== undefined && mCurr.wind_wave_height !== null
+            ? Number(mCurr.wind_wave_height)
+            : undefined,
         swellHeightM: Number(mCurr.swell_wave_height ?? 1.25),
         swellDirectionDeg: Number(mCurr.swell_wave_direction ?? 112),
         swellPeriodSec: Number(mCurr.swell_wave_period ?? 9.2),
         windSpeedKmh: Number(wCurr.wind_speed_10m ?? 24),
         windDirectionDeg: Number(wCurr.wind_direction_10m ?? 108),
+        windGustsKmh:
+          wCurr.wind_gusts_10m !== undefined && wCurr.wind_gusts_10m !== null
+            ? Number(wCurr.wind_gusts_10m)
+            : undefined,
         waterTempC: Number(mCurr.sea_surface_temperature ?? 28.4),
-        timestampIso: mCurr.time ? new Date(mCurr.time).toISOString() : nowIso,
+        airTempC:
+          wCurr.temperature_2m !== undefined && wCurr.temperature_2m !== null
+            ? Number(wCurr.temperature_2m)
+            : undefined,
+        uvIndex:
+          wCurr.uv_index !== undefined && wCurr.uv_index !== null
+            ? Number(wCurr.uv_index)
+            : undefined,
+        oceanCurrentKmh:
+          mCurr.ocean_current_velocity !== undefined && mCurr.ocean_current_velocity !== null
+            ? Number(mCurr.ocean_current_velocity)
+            : undefined,
+        timestampIso: isoTime,
       };
     });
 
@@ -290,11 +349,11 @@ let staleCache: {
   ages: Record<string, number | null>;
 } | null = null;
 
-async function detectStaleCameras(): Promise<{
+async function detectStaleCameras(forceFresh = false): Promise<{
   ids: string[];
   ages: Record<string, number | null>;
 }> {
-  if (staleCache && Date.now() - staleCache.at < 3 * 60 * 1000) {
+  if (!forceFresh && staleCache && Date.now() - staleCache.at < 3 * 60 * 1000) {
     return { ids: staleCache.ids, ages: staleCache.ages };
   }
 
@@ -351,88 +410,135 @@ function getFallbackHourlyForecast(): HourlyForecastPoint[] {
   return points;
 }
 
-async function fetchHourlyIslandForecast(): Promise<HourlyForecastPoint[]> {
+const COAST_HOURLY_COORDS: { coast: CoastSector; lat: number; lon: number }[] = [
+  { coast: "South", lat: 13.045, lon: -59.565 },
+  { coast: "West", lat: 13.175, lon: -59.655 },
+  { coast: "East/Southeast", lat: 13.185, lon: -59.435 },
+  { coast: "North", lat: 13.345, lon: -59.615 },
+];
+
+function parseHourlySeries(mHourly: any, wHourly: any, currentHourIso: string): HourlyForecastPoint[] {
+  if (!mHourly?.time || !wHourly?.time) return getFallbackHourlyForecast();
+
+  let startIdx = mHourly.time.findIndex((t: string) => t >= currentHourIso);
+  if (startIdx < 0) startIdx = 0;
+
+  const points: HourlyForecastPoint[] = [];
+  const endIdx = Math.min(mHourly.time.length, startIdx + 24);
+
+  for (let i = startIdx; i < endIdx; i++) {
+    const timeStr = mHourly.time[i];
+    const match = timeStr.match(/T(\d{2}):/);
+    const hours = match ? parseInt(match[1], 10) : 12;
+    const period = hours >= 12 ? "pm" : "am";
+    const displayHour = hours % 12 === 0 ? 12 : hours % 12;
+    const hourLabel = `${displayHour}${period}`;
+
+    points.push({
+      timeIso: timeStr,
+      hourLabel,
+      waveHeightM: Number(mHourly.wave_height?.[i] ?? 1.1),
+      swellPeriodSec: Number(mHourly.swell_wave_period?.[i] ?? 8.5),
+      swellDirectionDeg: Number(mHourly.swell_wave_direction?.[i] ?? 105),
+      windSpeedKmh: Number(wHourly.wind_speed_10m?.[i] ?? 20),
+      windDirectionDeg: Number(wHourly.wind_direction_10m?.[i] ?? 95),
+    });
+  }
+
+  return points.length > 0 ? points : getFallbackHourlyForecast();
+}
+
+async function fetchHourlyCoastForecasts(forceFresh = false): Promise<{
+  defaultForecast: HourlyForecastPoint[];
+  byCoast: Record<CoastSector, HourlyForecastPoint[]>;
+}> {
+  const fallback = getFallbackHourlyForecast();
+  const fallbackByCoast: Record<CoastSector, HourlyForecastPoint[]> = {
+    South: fallback,
+    West: fallback,
+    "East/Southeast": fallback,
+    North: fallback,
+  };
+
   try {
+    const lats = COAST_HOURLY_COORDS.map((c) => c.lat.toFixed(3)).join(",");
+    const lons = COAST_HOURLY_COORDS.map((c) => c.lon.toFixed(3)).join(",");
+    const fetchOpts: RequestInit & { next?: { revalidate: number } } = forceFresh
+      ? { cache: "no-store" }
+      : { next: { revalidate: 120 } };
+
     const [mRes, wRes] = await Promise.all([
       fetch(
-        "https://marine-api.open-meteo.com/v1/marine?latitude=13.1939&longitude=-59.5432&hourly=wave_height,swell_wave_height,swell_wave_direction,swell_wave_period&forecast_days=2&timezone=America%2FBarbados",
-        { cache: "no-store" }
+        `https://marine-api.open-meteo.com/v1/marine?latitude=${lats}&longitude=${lons}&hourly=wave_height,swell_wave_height,swell_wave_direction,swell_wave_period&cell_selection=sea&forecast_days=2&timezone=America%2FBarbados`,
+        fetchOpts
       ),
       fetch(
-        "https://api.open-meteo.com/v1/forecast?latitude=13.1939&longitude=-59.5432&hourly=wind_speed_10m,wind_direction_10m&forecast_days=2&timezone=America%2FBarbados",
-        { cache: "no-store" }
+        `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&hourly=wind_speed_10m,wind_direction_10m&forecast_days=2&timezone=America%2FBarbados`,
+        fetchOpts
       ),
     ]);
 
-    if (!mRes.ok || !wRes.ok) return getFallbackHourlyForecast();
+    if (!mRes.ok || !wRes.ok) {
+      return { defaultForecast: fallback, byCoast: fallbackByCoast };
+    }
 
-    const m = await mRes.json();
-    const w = await wRes.json();
+    const mJson = await mRes.json();
+    const wJson = await wRes.json();
+    const mList = Array.isArray(mJson) ? mJson : [mJson];
+    const wList = Array.isArray(wJson) ? wJson : [wJson];
 
-    const mHourly = m?.hourly;
-    const wHourly = w?.hourly;
-    if (!mHourly?.time || !wHourly?.time) return getFallbackHourlyForecast();
-
-    const now = new Date();
-    // Barbados is UTC-4 year-round
     const bbNowStr = new Intl.DateTimeFormat("en-CA", {
       timeZone: "America/Barbados",
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
       hour: "2-digit",
-      hour12: false,
-    }).format(now); // e.g. "2026-11-02, 21" or "2026-11-02 21"
+      hourCycle: "h23",
+    }).format(new Date());
     const currentHourIso = bbNowStr.replace(/,\s*/, "T").slice(0, 13);
 
-    let startIdx = mHourly.time.findIndex((t: string) => t >= currentHourIso);
-    if (startIdx < 0) startIdx = 0;
+    const byCoast = { ...fallbackByCoast };
+    COAST_HOURLY_COORDS.forEach((coord, idx) => {
+      const mHourly = mList[idx]?.hourly || mList[0]?.hourly;
+      const wHourly = wList[idx]?.hourly || wList[0]?.hourly;
+      byCoast[coord.coast] = parseHourlySeries(mHourly, wHourly, currentHourIso);
+    });
 
-    const points: HourlyForecastPoint[] = [];
-    const endIdx = Math.min(mHourly.time.length, startIdx + 24);
-
-    for (let i = startIdx; i < endIdx; i++) {
-      const timeStr = mHourly.time[i];
-      const match = timeStr.match(/T(\d{2}):/);
-      const hours = match ? parseInt(match[1], 10) : 12;
-      const period = hours >= 12 ? "pm" : "am";
-      const displayHour = hours % 12 === 0 ? 12 : hours % 12;
-      const hourLabel = `${displayHour}${period}`;
-
-      points.push({
-        timeIso: timeStr,
-        hourLabel,
-        waveHeightM: Number(mHourly.wave_height?.[i] ?? 1.1),
-        swellPeriodSec: Number(mHourly.swell_wave_period?.[i] ?? 8.5),
-        swellDirectionDeg: Number(mHourly.swell_wave_direction?.[i] ?? 105),
-        windSpeedKmh: Number(wHourly.wind_speed_10m?.[i] ?? 20),
-        windDirectionDeg: Number(wHourly.wind_direction_10m?.[i] ?? 95),
-      });
-    }
-
-    return points.length > 0 ? points : getFallbackHourlyForecast();
+    return {
+      defaultForecast: byCoast.South,
+      byCoast,
+    };
   } catch {
-    return getFallbackHourlyForecast();
+    return { defaultForecast: fallback, byCoast: fallbackByCoast };
   }
 }
 
-export async function getIslandConditionsPayload(): Promise<IslandConditionsPayload> {
-  const [{ map: marineMap, isLive }, aiGradesMap, tideSchedule, cameraCheck, hourlyForecast] =
+export async function getIslandConditionsPayload(options?: {
+  forceFresh?: boolean;
+}): Promise<IslandConditionsPayload> {
+  const forceFresh = Boolean(options?.forceFresh);
+  const [{ map: marineMap, isLive }, aiGradesMap, tideSchedule, cameraCheck, hourlyData] =
     await Promise.all([
-      fetchRawMarineForBeaches(BARBADOS_BEACHES),
+      fetchRawMarineForBeaches(BARBADOS_BEACHES, forceFresh),
       loadAiGradesMap(),
-      fetchBarbadosTideSchedule(),
-      detectStaleCameras(),
-      fetchHourlyIslandForecast(),
+      fetchBarbadosTideSchedule(forceFresh),
+      detectStaleCameras(forceFresh),
+      fetchHourlyCoastForecasts(forceFresh),
     ]);
   const staleCameraIds = cameraCheck.ids;
   const cameraAgeMinutes = cameraCheck.ages;
+  const hourlyForecast = hourlyData.defaultForecast;
+  const hourlyForecastByCoast = hourlyData.byCoast;
 
-  // Apply stale-camera filtering for this request and recompute which beaches truly have a live cam
+  // Apply stale-camera filtering immediately so getCamerasForBeach() hides dead feeds everywhere
   setStaleCameraIds(staleCameraIds);
   const liveBeaches: BeachDefinition[] = BARBADOS_BEACHES.map((beach) => {
-    const liveIds = beach.cameraIds.filter((id) => !staleCameraIds.includes(id));
-    return { ...beach, cameraIds: liveIds, hasLiveCam: liveIds.length > 0 };
+    const liveCams = getCamerasForBeach(beach.slug);
+    return {
+      ...beach,
+      cameraIds: liveCams.map((c) => c.id),
+      hasLiveCam: liveCams.length > 0,
+    };
   });
 
   const computedList: ComputedBeachTelemetry[] = liveBeaches.map((beach) => {
@@ -466,6 +572,7 @@ export async function getIslandConditionsPayload(): Promise<IslandConditionsPayl
     staleCameraIds,
     cameraAgeMinutes,
     hourlyForecast,
+    hourlyForecastByCoast,
     islandSummary: {
       totalBeaches: bundled.length,
       greenCount: bundled.filter((b) => b.statusColor === "green").length,

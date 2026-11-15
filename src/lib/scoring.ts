@@ -6,12 +6,17 @@ export type BeachStatusColor = "green" | "amber" | "red";
 
 export interface RawMarineTelemetry {
   waveHeightM: number;
+  windWaveHeightM?: number;
   swellHeightM: number;
   swellDirectionDeg: number;
   swellPeriodSec: number;
   windSpeedKmh: number;
   windDirectionDeg: number;
+  windGustsKmh?: number;
   waterTempC?: number;
+  airTempC?: number;
+  uvIndex?: number;
+  oceanCurrentKmh?: number;
   timestampIso: string;
 }
 
@@ -81,13 +86,14 @@ export function formatCameraAge(minutes: number | null | undefined): string {
 }
 
 /**
- * Top beaches right now: best swim score, then least seaweed. Rough/red beaches never qualify.
+ * Top beaches right now: best swim score, calmest water, least seaweed, then live cam availability.
  */
 export function rankBestRightNow<
   T extends {
-    beach: { slug: string };
+    beach: { slug: string; hasLiveCam?: boolean };
     statusColor: BeachStatusColor;
     swimScore: number;
+    inshoreWaveM?: number;
     effectiveSargassumScore: number;
   }
 >(items: T[], count = 3): T[] {
@@ -95,7 +101,10 @@ export function rankBestRightNow<
     .filter((b) => b.statusColor === "green")
     .sort(
       (a, b) =>
-        b.swimScore - a.swimScore || a.effectiveSargassumScore - b.effectiveSargassumScore
+        b.swimScore - a.swimScore ||
+        (a.inshoreWaveM ?? 99) - (b.inshoreWaveM ?? 99) ||
+        a.effectiveSargassumScore - b.effectiveSargassumScore ||
+        (b.beach.hasLiveCam ? 1 : 0) - (a.beach.hasLiveCam ? 1 : 0)
     )
     .slice(0, count);
 }
@@ -111,18 +120,20 @@ export function angularDifferenceDeg(a: number, b: number): number {
 /**
  * Compute cosine exposure (0.0 to 1.0) of a coastline facing `coastalAzimuthDeg`
  * to an incoming vector from `incomingDirectionDeg`.
- * Direct onshore = 1.0; parallel = 0.15 (diffraction wrap); offshore = 0.05.
+ * Direct onshore = 1.0; cross-shore refraction tapers gradually into leeward shadow.
  */
 export function computeVectorExposure(coastalAzimuthDeg: number, incomingDirectionDeg: number): number {
-  const deltaRad = (angularDifferenceDeg(coastalAzimuthDeg, incomingDirectionDeg) * Math.PI) / 180;
+  const diff = angularDifferenceDeg(coastalAzimuthDeg, incomingDirectionDeg);
+  const deltaRad = (diff * Math.PI) / 180;
   const rawCos = Math.cos(deltaRad);
   if (rawCos >= 0) {
-    // Onshore quadrant: blend direct cosine with 15% wrap-around diffraction
-    return Math.min(1, 0.15 + 0.85 * rawCos);
+    // Onshore & cross-onshore quadrant (0 to 90 deg): direct cosine + island shelf refraction
+    return Number(Math.min(1, 0.24 + 0.76 * Math.pow(rawCos, 0.85)).toFixed(3));
   }
-  // Leeward / offshore shadow: slight refraction wrap when near 90-120 deg
-  const wrap = Math.max(0, (rawCos + 0.5) * 0.3);
-  return Number(Math.max(0.04, wrap).toFixed(3));
+  // Cross-shore refraction (90 to 135 deg) tapering into leeward shadow (135 to 180 deg)
+  const t = Math.max(0, (180 - diff) / 90);
+  const wrap = 0.055 + 0.185 * Math.pow(t, 1.45);
+  return Number(wrap.toFixed(3));
 }
 
 export function degreesToCompass(deg: number): string {
@@ -151,14 +162,15 @@ export function scoreBeachConditions(
   const swellExp = computeVectorExposure(beach.coastalAzimuthDeg, marine.swellDirectionDeg);
   const windExp = computeVectorExposure(beach.coastalAzimuthDeg, marine.windDirectionDeg);
 
-  // Reef attenuation reduces offshore wave energy significantly, though long-period swells (>11s) overtop reefs more
-  const periodFactor = Math.min(1.35, Math.max(0.8, marine.swellPeriodSec / 9.5));
-  const effectiveReefShield = Math.max(0.08, beach.reefProtectionFactor * (1 / periodFactor));
-
-  const offshoreEnergyM = Math.max(marine.waveHeightM, marine.swellHeightM * 0.9);
-  const rawInshoreWaveM = offshoreEnergyM * swellExp * (1 - effectiveReefShield * 0.78);
-  const windChopM = (marine.windSpeedKmh / 45) * windExp * (1 - beach.reefProtectionFactor * 0.5) * 0.45;
-  const inshoreWaveM = Number(Math.max(0.05, rawInshoreWaveM + windChopM).toFixed(2));
+  const offshoreEnergyM = Math.max(marine.waveHeightM, marine.swellHeightM * 0.92);
+  const inshoreWaveM = predictInshoreWave(beach, {
+    waveHeightM: offshoreEnergyM,
+    swellPeriodSec: marine.swellPeriodSec,
+    swellDirectionDeg: marine.swellDirectionDeg,
+    windSpeedKmh: marine.windSpeedKmh,
+    windDirectionDeg: marine.windDirectionDeg,
+    windWaveHeightM: marine.windWaveHeightM,
+  });
 
   // Classify Inshore Chop
   let inshoreChop: InshoreChopLevel = "Glassy";
@@ -190,11 +202,12 @@ export function scoreBeachConditions(
     : sargassumRisk;
 
   // Compute Swim Score (0-100)
-  // Start at 98, deduct for inshore wave energy, onshore wind chop, East/North rip current hazard, and sargassum
+  // Start at 98, deduct for inshore wave energy, onshore wind chop, reef openness, rip current hazard, and sargassum
   let swimRaw = 98;
   swimRaw -= inshoreWaveM * 36;
   swimRaw -= Math.max(0, (marine.windSpeedKmh * windExp - 12) * 0.65);
   swimRaw -= effectiveSargassumScore * 0.48;
+  swimRaw -= (1 - beach.reefProtectionFactor) * 12;
 
   if (beach.coast === "East/Southeast" && beach.reefProtectionFactor < 0.35) {
     swimRaw -= 28; // Persistent Atlantic rip current penalty for open East Coast
@@ -327,13 +340,19 @@ export function predictInshoreWave(
     swellDirectionDeg: number;
     windSpeedKmh: number;
     windDirectionDeg: number;
+    windWaveHeightM?: number;
   }
 ): number {
   const swellExp = computeVectorExposure(beach.coastalAzimuthDeg, point.swellDirectionDeg);
   const windExp = computeVectorExposure(beach.coastalAzimuthDeg, point.windDirectionDeg);
-  const periodFactor = Math.min(1.35, Math.max(0.8, point.swellPeriodSec / 9.5));
+  const periodFactor = Math.min(1.35, Math.max(0.85, point.swellPeriodSec / 8.5));
   const effectiveReefShield = Math.max(0.08, beach.reefProtectionFactor * (1 / periodFactor));
-  const rawInshoreWaveM = point.waveHeightM * swellExp * (1 - effectiveReefShield * 0.78);
-  const windChopM = (point.windSpeedKmh / 45) * windExp * (1 - beach.reefProtectionFactor * 0.5) * 0.45;
-  return Number(Math.max(0.05, rawInshoreWaveM + windChopM).toFixed(2));
+  const shelfLapM = point.waveHeightM * (1 - beach.reefProtectionFactor) * 0.36;
+  const rawInshoreWaveM = point.waveHeightM * swellExp * (1 - effectiveReefShield * 0.72) + shelfLapM;
+  const windWaveComponent =
+    (point.windWaveHeightM ?? 0) * windExp * (1 - beach.reefProtectionFactor * 0.55) * 0.35;
+  const windChopM =
+    (point.windSpeedKmh / 42) * windExp * (1 - beach.reefProtectionFactor * 0.45) * 0.45 +
+    windWaveComponent;
+  return Number(Math.max(0.07, rawInshoreWaveM + windChopM).toFixed(2));
 }
