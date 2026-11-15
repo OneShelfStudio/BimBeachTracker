@@ -30,7 +30,7 @@ export function generateMetadata({
   const beach = getBeachBySlug(params.slug);
   if (!beach) return {};
 
-  const url = `https://www.digital-dads-llc.com/beach/${beach.slug}`;
+  const url = `https://www.bimbeachtracker.com/beach/${beach.slug}`;
   const title = `${beach.name} (${beach.parish}, Barbados) | Live Beach Cameras, Sargassum & Tide Report`;
   const description = `Check live water conditions, sargassum seaweed levels, daily high & low tide times, and live beach cameras at ${beach.name} on the ${beach.coast} Coast of Barbados. ${beach.description}`;
 
@@ -44,7 +44,7 @@ export function generateMetadata({
       title,
       description,
       url,
-      siteName: "BimBeachTracker by Digital Dads LLC",
+      siteName: "BimBeachTracker",
       type: "website",
     },
     twitter: {
@@ -100,7 +100,7 @@ export default async function BeachStationDetailPage({
         {/* Back Link */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/15 pb-4">
           <Link
-            href="/bim-beach-tracker"
+            href="/"
             className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-amber-300 hover:text-amber-200"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -149,7 +149,7 @@ export default async function BeachStationDetailPage({
                   `* Status: ${friendlyWater} (${friendlySeaweed})\n` +
                   `* Coast: ${beach.coast} (${beach.parish})\n` +
                   `* Next Tide: ${payload.tideSchedule.nextTideSummary}\n\n` +
-                  `Check live conditions and cameras:\nhttps://www.digital-dads-llc.com/beach/${beach.slug}`
+                  `Check live conditions and cameras:\nhttps://www.bimbeachtracker.com/beach/${beach.slug}`
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"

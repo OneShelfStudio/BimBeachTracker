@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import {
   ExternalLink,
   Navigation,
@@ -243,12 +242,14 @@ export default function BimBeachDashboard({ initialData }: BimBeachDashboardProp
               BimBeachTracker · Barbados Coastal Guide
             </span>
             <span className="text-white/20 hidden md:inline">|</span>
-            <Link
-              href="/"
+            <a
+              href="https://www.digital-dads-llc.com/news/why-i-built-bim-beach-tracker"
+              target="_blank"
+              rel="noopener noreferrer"
               className="text-[11px] font-medium text-slate-300 hover:text-amber-300 transition underline underline-offset-4"
             >
-              Free Public Tool by Digital Dads LLC →
-            </Link>
+              Why We Built This (Free Tool) · Digital Dads LLC ↗
+            </a>
           </div>
 
           <div className="flex flex-wrap items-center gap-4 text-xs">
@@ -819,6 +820,74 @@ export default function BimBeachDashboard({ initialData }: BimBeachDashboardProp
             variant="beach"
             label="Sponsored"
           />
+
+          {/* COMMUNITY & SPONSOR FOOTER (yuhgettintru.com-inspired public utility model) */}
+          <footer className="rounded-sm border border-white/15 bg-[#061220] p-6 sm:p-8 space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              <div className="lg:col-span-7 space-y-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-300">
+                  100% Free Public Utility · Built for Barbados
+                </p>
+                <h2 className="font-serif text-2xl sm:text-3xl font-bold text-white leading-snug">
+                  Free for Everyone. Backed by Local Sponsors.
+                </h2>
+                <p className="text-sm text-slate-300 font-light leading-relaxed">
+                  I see a problem, I solve a problem. I don&apos;t ask permission to solve the problem, and I hope the public benefits. BimBeachTracker.com is built and maintained as a 100% free public tool for Barbados by Ryan Bedisee (Digital Dads LLC).
+                </p>
+                <p className="text-sm text-slate-300 font-light leading-relaxed">
+                  Want to help keep live cameras and marine telemetry free for every swimmer, surfer, and family on the island? Local beach bars, chair and umbrella rentals, fish cutter spots, catamarans, and Bajan brands can sponsor a beach page or partner with the platform.
+                </p>
+              </div>
+
+              <div className="lg:col-span-5 space-y-4 lg:border-l lg:border-white/10 lg:pl-6">
+                <div className="flex flex-col sm:flex-row lg:flex-col gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setSponsorModalSlug(selectedBundle.beach.slug)}
+                    className="inline-flex items-center justify-center gap-2 rounded-sm bg-amber-300 px-5 py-3 text-xs font-bold uppercase tracking-widest text-slate-950 transition hover:bg-amber-200"
+                  >
+                    <span>Sponsor a Beach Page</span>
+                  </button>
+                  <a
+                    href="https://www.digital-dads-llc.com/news/why-i-built-bim-beach-tracker"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-2 rounded-sm border border-white/20 bg-white/5 px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-200 transition hover:border-amber-300 hover:text-amber-300"
+                  >
+                    <span>Read the Why Story</span>
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                  <a
+                    href="https://www.digital-dads-llc.com/links"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-2 rounded-sm border border-white/15 bg-transparent px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-cyan-300 transition hover:border-cyan-300 hover:text-cyan-200"
+                  >
+                    <span>All Links &amp; Contact (@chaosspawner)</span>
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                </div>
+
+                <div className="rounded-sm border border-emerald-400/30 bg-emerald-950/30 p-4 space-y-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-300 block">
+                    Community Environmental Partner
+                  </span>
+                  <p className="text-xs text-slate-200 leading-relaxed">
+                    Digital Dads LLC is proud to be THE official site sponsor of{" "}
+                    <a
+                      href="https://www.keepbarbadosclean.com"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-bold text-emerald-300 hover:text-emerald-200 underline underline-offset-4"
+                    >
+                      KeepBarbadosClean.com
+                    </a>
+                    , supporting island cleanups across Barbados.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </footer>
         </section>
       </main>
 

@@ -137,8 +137,8 @@ export default function ConditionsPanel({
   const handleShareBeach = async () => {
     const shareUrl =
       typeof window !== "undefined"
-        ? `${window.location.origin}/bim-beach-tracker?beach=${encodeURIComponent(beach.slug)}`
-        : `https://www.digital-dads-llc.com/bim-beach-tracker?beach=${encodeURIComponent(beach.slug)}`;
+        ? `${window.location.origin}/?beach=${encodeURIComponent(beach.slug)}`
+        : `https://www.bimbeachtracker.com/?beach=${encodeURIComponent(beach.slug)}`;
 
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
@@ -170,7 +170,7 @@ export default function ConditionsPanel({
     const shareUrl =
       typeof window !== "undefined"
         ? `${window.location.origin}/beach/${beach.slug}`
-        : `https://www.digital-dads-llc.com/beach/${beach.slug}`;
+        : `https://www.bimbeachtracker.com/beach/${beach.slug}`;
 
     const text = `Barbados Beach Update for ${beach.name}:\n\n` +
       `* Status: ${status} (${waves}, ${seaweed})\n` +
