@@ -282,7 +282,7 @@ export default function BimBeachDashboard({ initialData }: BimBeachDashboardProp
                 Where Do You Want to Go <span className="italic font-normal text-amber-200">Today?</span>
               </h1>
               <p className="text-sm sm:text-base text-slate-300 font-light">
-                Tap any beach on the Barbados map or filter by what you feel like doing today. Open the sections on the right only when you want deeper tide, wind, or food details.
+                Tap any beach on the Barbados map or filter by what you feel like doing today. Open the sections on the right only when you want deeper tide, wind, or local business spotlight details.
               </p>
             </div>
 
@@ -526,7 +526,7 @@ export default function BimBeachDashboard({ initialData }: BimBeachDashboardProp
         </section>
 
         {/* ========================================================================= */}
-        {/* 2. PROGRESSIVE BROWSE TABS: CAMERAS / ALL BEACHES / LOCAL FOOD & CHAIRS */}
+        {/* 2. PROGRESSIVE BROWSE TABS: CAMERAS / ALL BEACHES / BUSINESS PARTNERSHIPS */}
         {/* ========================================================================= */}
         <section className="border-t border-white/15 pt-10 space-y-8">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-white/15 pb-4">
@@ -535,7 +535,7 @@ export default function BimBeachDashboard({ initialData }: BimBeachDashboardProp
                 Explore More When You Need It
               </p>
               <h2 className="font-serif text-2xl sm:text-4xl font-bold text-white mt-0.5">
-                Live Cameras, All {data.beaches.length} Beaches &amp; Local Spots
+                Live Cameras, All {data.beaches.length} Beaches &amp; Local Partnerships
               </h2>
             </div>
 
@@ -574,7 +574,7 @@ export default function BimBeachDashboard({ initialData }: BimBeachDashboardProp
                     : "border-transparent text-slate-400 hover:text-white"
                 }`}
               >
-                Fish Cutters, Bars &amp; Chairs ({featuredPartners.length})
+                Local Businesses &amp; Partnerships
               </button>
             </div>
           </div>
@@ -788,74 +788,124 @@ export default function BimBeachDashboard({ initialData }: BimBeachDashboardProp
             </div>
           )}
 
-          {/* TAB C: VERIFIED LOCAL BEACH SPOTS (FISH CUTTERS, BARS & CHAIRS) */}
+          {/* TAB C: LOCAL BEACH BUSINESS PARTNERSHIPS */}
           {activeBottomTab === "spots" && (
             <div className="space-y-6">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <p className="text-sm text-slate-300 max-w-2xl font-light">
-                  Local fish cutter stands, beach bars, shaded lounger rentals, and surf schools right on the sand across Barbados.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setSponsorModalSlug(selectedBundle.beach.slug)}
-                  className="rounded-sm border border-amber-300 px-5 py-2.5 text-xs font-bold uppercase tracking-[0.18em] text-amber-300 transition hover:bg-amber-300 hover:text-slate-950"
-                >
-                  List Your Beach Business
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {featuredPartners.map((partner) => (
-                  <div
-                    key={partner.beachSlug}
-                    className="flex flex-col justify-between rounded-sm border border-white/15 bg-[#061220] p-6 space-y-4 transition hover:border-amber-300/60"
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-amber-300/30 bg-[#061220] p-6 rounded-sm">
+                <div className="space-y-1">
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-amber-300">
+                    BimBeachTracker Local Business Network
+                  </span>
+                  <h3 className="font-serif text-2xl font-bold text-white">
+                    Feature Your Business on Barbados Beach Pages
+                  </h3>
+                  <p className="text-sm text-slate-300 max-w-2xl font-light">
+                    We do not publish unverified food guides. Authentic local operators who run beach bars, chair and umbrella rentals, catamaran charters, surf schools, or watersports spots can partner with BimBeachTracker to reach thousands of locals and visitors daily.
+                  </p>
+                </div>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setSponsorModalSlug(selectedBundle.beach.slug)}
+                    className="rounded-sm bg-amber-300 px-5 py-3 text-xs font-bold uppercase tracking-[0.18em] text-slate-950 transition hover:bg-amber-200"
                   >
-                    <div className="space-y-2.5">
-                      <div className="flex items-center justify-between border-b border-white/10 pb-2 text-[11px] uppercase tracking-wider">
-                        <span className="font-semibold text-amber-300">
-                          {partner.beachLabel || partner.beachSlug}
-                        </span>
-                        <span className="text-slate-400">{partner.category}</span>
-                      </div>
-
-                      <h3 className="font-serif text-xl font-bold text-white">
-                        {partner.partnerName}
-                      </h3>
-
-                      <p className="text-xs sm:text-sm text-slate-300 font-light leading-relaxed">
-                        {partner.perkOffer}
-                      </p>
-                    </div>
-
-                    <div className="space-y-3 pt-2 border-t border-white/10">
-                      {partner.priceHint && (
-                        <p className="text-xs font-medium text-amber-200">
-                          {partner.priceHint}
-                        </p>
-                      )}
-
-                      <div className="flex items-center gap-2.5">
-                        <a
-                          href={partner.ctaUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-sm bg-amber-300 px-4 py-2.5 text-[11px] font-bold uppercase tracking-widest text-slate-950 transition hover:bg-amber-200"
-                        >
-                          <span>{partner.ctaLabel}</span>
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
-                        <button
-                          type="button"
-                          onClick={() => handleSelectBeachAndScroll(partner.beachSlug, "map")}
-                          className="rounded-sm border border-white/25 px-3.5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-slate-200 hover:border-white hover:text-white transition"
-                        >
-                          View on Map
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                    Apply to Get Listed
+                  </button>
+                  <a
+                    href="https://wa.me/12468508210?text=Hi%20Ryan!%20I%20run%20a%20business%20in%20Barbados%20and%20want%20to%20get%20featured%20on%20BimBeachTracker.com."
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-sm border border-emerald-400 px-5 py-3 text-xs font-bold uppercase tracking-[0.18em] text-emerald-300 transition hover:bg-emerald-400/10 text-center"
+                  >
+                    WhatsApp Us
+                  </a>
+                </div>
               </div>
+
+              {featuredPartners.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {featuredPartners.map((partner) => (
+                    <div
+                      key={partner.beachSlug}
+                      className="flex flex-col justify-between rounded-sm border border-white/15 bg-[#061220] p-6 space-y-4 transition hover:border-amber-300/60"
+                    >
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between border-b border-white/10 pb-2 text-[11px] uppercase tracking-wider">
+                          <span className="font-semibold text-amber-300">
+                            {partner.beachLabel || partner.beachSlug}
+                          </span>
+                          <span className="text-slate-400">{partner.category}</span>
+                        </div>
+
+                        <h3 className="font-serif text-xl font-bold text-white">
+                          {partner.partnerName}
+                        </h3>
+
+                        <p className="text-xs sm:text-sm text-slate-300 font-light leading-relaxed">
+                          {partner.perkOffer}
+                        </p>
+                      </div>
+
+                      <div className="space-y-3 pt-2 border-t border-white/10">
+                        {partner.priceHint && (
+                          <p className="text-xs font-medium text-amber-200">
+                            {partner.priceHint}
+                          </p>
+                        )}
+
+                        <div className="flex items-center gap-2.5">
+                          <a
+                            href={partner.ctaUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-sm bg-amber-300 px-4 py-2.5 text-[11px] font-bold uppercase tracking-widest text-slate-950 transition hover:bg-amber-200"
+                          >
+                            <span>{partner.ctaLabel}</span>
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => handleSelectBeachAndScroll(partner.beachSlug, "map")}
+                            className="rounded-sm border border-white/25 px-3.5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-slate-200 hover:border-white hover:text-white transition"
+                          >
+                            View on Map
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+                  {[
+                    { coast: "South Coast", sample: "Pebbles Beach, Miami Beach, Accra" },
+                    { coast: "West Coast", sample: "Mullins, Sandy Lane, Folkestone" },
+                    { coast: "East & North Coasts", sample: "Bathsheba, Martin's Bay, Little Bay" },
+                  ].map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="border border-white/10 bg-[#040c16] p-5 space-y-3 rounded-sm"
+                    >
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-cyan-300">
+                        {item.coast} Exclusive Spotlights
+                      </span>
+                      <h4 className="font-serif text-lg font-bold text-white">
+                        Available Beach Partner Slots
+                      </h4>
+                      <p className="text-xs text-slate-300 font-light">
+                        Featured placement on beach condition pages including {item.sample}. Direct WhatsApp click or link to your booking desk.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setSponsorModalSlug(selectedBundle.beach.slug)}
+                        className="text-xs font-bold uppercase tracking-wider text-amber-300 hover:text-amber-200 underline underline-offset-4"
+                      >
+                        Inquire for {item.coast} →
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

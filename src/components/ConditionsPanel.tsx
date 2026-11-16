@@ -650,7 +650,7 @@ export default function ConditionsPanel({
             )}
           </div>
 
-          {/* DRILL-DOWN 3: WHERE TO EAT, RENT CHAIRS & LOCAL SPOTS */}
+          {/* DRILL-DOWN 3: LOCAL BUSINESS SPOTLIGHT & SPONSORSHIP */}
           <div>
             <button
               type="button"
@@ -659,10 +659,10 @@ export default function ConditionsPanel({
             >
               <div>
                 <span className="text-xs font-bold uppercase tracking-[0.18em] text-white group-hover:text-amber-300 transition">
-                  3. Food, Chairs &amp; Local Spots Here
+                  3. Local Business Spotlight · Sponsor This Beach
                 </span>
                 <span className="block text-[11px] text-amber-200/80">
-                  {partner.partnerName}
+                  {partner.isSponsored ? partner.partnerName : "Spotlight open for local beach operators"}
                 </span>
               </div>
               <ChevronDown
@@ -676,7 +676,7 @@ export default function ConditionsPanel({
               <div className="pb-4 space-y-3">
                 <div className="bg-[#040c16] border border-white/10 p-4 space-y-2.5">
                   <div className="flex items-center justify-between text-[11px] uppercase tracking-wider text-amber-300">
-                    <span>{partner.category}</span>
+                    <span>{partner.isSponsored ? partner.category : "Local Business Spotlight Open"}</span>
                     <button
                       type="button"
                       onClick={() => onOpenSponsorModal(beach.slug)}
@@ -686,10 +686,13 @@ export default function ConditionsPanel({
                     </button>
                   </div>
                   <h4 className="font-serif text-lg font-bold text-white">
-                    {partner.partnerName}
+                    {partner.headline}
                   </h4>
                   <p className="text-xs text-slate-300 leading-relaxed font-light">
                     {partner.perkOffer}
+                  </p>
+                  <p className="text-[11px] text-slate-400 italic">
+                    We do not maintain unverified restaurant guides. Authentic local businesses can partner with BimBeachTracker to be featured right here.
                   </p>
                   <div className="pt-1 flex flex-wrap items-center justify-between gap-2">
                     {partner.priceHint && (
@@ -708,13 +711,25 @@ export default function ConditionsPanel({
                         <ExternalLink className="h-3 w-3" />
                       </a>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={() => onOpenSponsorModal(beach.slug)}
-                        className="text-xs font-bold uppercase tracking-wider text-amber-300 hover:text-amber-200 underline underline-offset-4"
-                      >
-                        Feature Your Spot on {beach.name}
-                      </button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => onOpenSponsorModal(beach.slug)}
+                          className="text-xs font-bold uppercase tracking-wider text-amber-300 hover:text-amber-200 underline underline-offset-4"
+                        >
+                          Feature Your Spot on {beach.name}
+                        </button>
+                        <span className="text-slate-500">·</span>
+                        <a
+                          href={partner.ctaUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-emerald-400 hover:text-emerald-300 underline underline-offset-4"
+                        >
+                          <span>WhatsApp to List</span>
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </div>
                     )}
                   </div>
                 </div>
